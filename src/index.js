@@ -8,8 +8,8 @@ import Routes from './routes'
 const App = () => {
   return (
     <>
-    <StatusBar barStyle="light-content" />
-    <Routes />
+        <StatusBar barStyle="light-content" />
+        <Routes />
     </>
   )
 }  ;

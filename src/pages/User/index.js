@@ -12,12 +12,14 @@ import { Container,
             OwnerAvatar,
             Info,
             Title,
-            Author} from './styles';
+            Author,
+            Loading} from './styles';
 
 export default class User extends Component {
     static propTypes = {
         navigation: PropTypes.shape({
             getParam: PropTypes.func,
+            navigate: PropTypes.func
         }).isRequired,
     }
     static navigationOptions = ({ navigation }) => ({
@@ -26,20 +28,54 @@ export default class User extends Component {
 
     state = {
        stars: [],
+       loading: true,
+       page: 1,
+       refresh: false
     }
+
     async componentDidMount() {
-        const { navigation } = this.props;
-        const user = navigation.getParam('user')
-
-        const res = await api.get(`/users/${user.login}/starred`);
-
-        this.setState({stars: res.data })
+        this.load()
     }
 
-    render() {
+    load = async (page = 1) => {
         const { navigation } = this.props
         const { stars } = this.state
         const user = navigation.getParam('user')
+
+        const res = await api.get(`/users/${user.login}/starred`, {
+            params: {page}
+        });
+
+        this.setState({
+            stars: page >= 2 ? [...stars, ...res.data] : res.data,
+            page,
+            loading: false,
+            refresh: false
+        })
+    };
+
+
+
+    loadMore = () => {
+        const { page } = this.state
+        const nextPage = page + 1
+
+        this.load(nextPage)
+    }
+
+    refreshList = () => {
+        this.setState({ refresh: true, stars: []}, this.load)
+    }
+
+    handleNavigate = repository => {
+        const { navigation } = this.props
+        navigation.navigate('Repository', { repository })
+    }
+
+    render() {
+        const { navigation } = this.props;
+        const user = navigation.getParam('user')
+        const { stars, loading, refresh } = this.state
 
         return (
             <Container>
@@ -48,12 +84,17 @@ export default class User extends Component {
                     <Name>{user.name}</Name>
                     <Bio>{user.bio}</Bio>
                 </Header>
+                {loading ? (<Loading />) : (
 
                 <Stars
                     data={stars}
+                    onRefresh={this.refreshList}
+                    refreshing={refresh}
+                    onEndReachedThreshold={0.2}
+                    onEndReached={this.loadMore}
                     keyExtractor={star => String(star.id)}
                     renderItem={({ item }) => (
-                        <Starred>
+                        <Starred onPress={() => this.handleNavigate(item)}>
                             <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
                             <Info>
                                 <Title>{item.name}</Title>
@@ -62,6 +103,7 @@ export default class User extends Component {
                         </Starred>
                     )}
                 />
+                )}
             </Container>
         );
     }
